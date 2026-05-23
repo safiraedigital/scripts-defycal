@@ -663,7 +663,7 @@
     .review-complete input {
       width: 16px;
       height: 16px;
-      accent-color: var(--primary);
+      accent-color: #8aa38a;
     }
     .review-note-body {
       display: flex;
@@ -2034,8 +2034,9 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           <div class="review-box ${state.current === "Alteração solicitada" ? "is-visible" : ""}" data-review-box>
             <h4>Comentário da alteração solicitada</h4>
             <div class="review-controls">
-              <span class="review-avatar" data-review-avatar>${personIcon("Amanda")}</span>
+              <span class="review-avatar" data-review-avatar>👤</span>
               <select class="review-author" data-review-author aria-label="Quem está fazendo o comentário">
+                <option value="" selected>Selecionar</option>
                 <option value="Amanda">Amanda</option>
                 <option value="Robson">Robson</option>
                 <option value="Allan">Allan</option>
@@ -2150,6 +2151,10 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       });
       saveReview?.addEventListener("click", () => {
         const text = reviewText.value.trim();
+        if (!reviewAuthor.value) {
+          reviewAuthor.focus();
+          return;
+        }
         if (!text) return;
         const state = getStatusState(activeScript.number);
         state.reviews = state.reviews || [];
@@ -2259,7 +2264,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       });
       reviewAuthor?.addEventListener("change", () => {
         reviewAvatar.classList.toggle("robson", reviewAuthor.value === "Robson");
-        reviewAvatar.textContent = personIcon(reviewAuthor.value);
+        reviewAvatar.textContent = reviewAuthor.value ? personIcon(reviewAuthor.value) : "👤";
       });
     }
     function filteredScripts() {
