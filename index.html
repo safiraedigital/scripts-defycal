@@ -608,13 +608,64 @@
       background: #ffffff;
       color: var(--ink);
       font-size: 13px;
+      display: grid;
+      gap: 8px;
     }
-    .review-note span {
-      display: block;
-      margin-bottom: 4px;
+    .review-note.is-complete {
+      border-color: var(--line-strong);
+      background: #f7faf7;
+    }
+    .review-note-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .review-note-meta {
       color: var(--orange-800);
       font-size: 12px;
       font-weight: 850;
+    }
+    .review-note-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .review-note-action {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #ffffff;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+    }
+    .review-note-action:hover {
+      color: var(--ink);
+      border-color: var(--line-strong);
+    }
+    .review-note-text {
+      margin: 0;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .review-complete {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      width: fit-content;
+    }
+    .review-complete input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
     }
     /* ===== DETAIL GRID ===== */
     .detail-grid {
@@ -1940,10 +1991,24 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       const reviews = state.reviews || [];
       const options = statusOptions.map(status => `<option value="${status}" ${state.current === status ? "selected" : ""}>${status}</option>`).join("");
       const timelineHtml = consolidatedTimeline(timeline, state.current);
-      const reviewsHtml = reviews.map(review => `
-        <div class="review-note">
-          <span>${review.author} · ${formatDate(review.date)}</span>
-          ${review.text}
+      const reviewsHtml = reviews.map((review, index) => `
+        <div class="review-note ${review.completed ? "is-complete" : ""}">
+          <div class="review-note-head">
+            <span class="review-note-meta">${escapeCommentHtml(review.author)} · ${formatDate(review.date)}</span>
+            <div class="review-note-actions">
+              <button class="review-note-action" type="button" data-review-edit="${index}" aria-label="Editar alteração">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </button>
+              <button class="review-note-action" type="button" data-review-delete="${index}" aria-label="Excluir alteração">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 7V5h6v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 10v9h8v-9" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="review-note-text">${escapeCommentHtml(review.text)}</p>
+          <label class="review-complete">
+            <input type="checkbox" data-review-complete="${index}" ${review.completed ? "checked" : ""}>
+            Concluído pelo Allan
+          </label>
         </div>
       `).join("");
       return `
@@ -2057,6 +2122,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       const reviewText = scriptMount.querySelector("[data-review-text]");
       const reviewAuthor = scriptMount.querySelector("[data-review-author]");
       const reviewAvatar = scriptMount.querySelector("[data-review-avatar]");
+      const reviewHistory = scriptMount.querySelector("[data-review-history]");
       select?.addEventListener("change", () => {
         const state = getStatusState(activeScript.number);
         const previousStatus = state.current;
@@ -2083,19 +2149,104 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         if (!text) return;
         const state = getStatusState(activeScript.number);
         state.reviews = state.reviews || [];
-        state.reviews.push({
-          author: reviewAuthor.value,
-          text,
-          date: new Date().toISOString()
-        });
+        const editingIndex = reviewText.dataset.editingReviewIndex;
+        const isEditing = editingIndex !== undefined && editingIndex !== "";
+        const reviewDate = new Date().toISOString();
+
+        if (isEditing && state.reviews[Number(editingIndex)]) {
+          const review = state.reviews[Number(editingIndex)];
+          review.author = reviewAuthor.value;
+          review.text = text;
+          review.date = reviewDate;
+          review.edited = true;
+          delete reviewText.dataset.editingReviewIndex;
+          saveReview.textContent = "Salvar comentário";
+        } else {
+          state.reviews.push({
+            author: reviewAuthor.value,
+            text,
+            date: reviewDate,
+            completed: false
+          });
+        }
         saveStatusState(activeScript.number, state);
         sendNotificationEvent({
-          type: "status_review_created",
+          type: isEditing ? "status_review_updated" : "status_review_created",
           scriptNumber: activeScript.number,
           scriptTitle: `Script ${activeScript.number}`,
           scriptTheme: activeScript.tema,
           author: reviewAuthor.value,
           text,
+          from: "",
+          to: state.current,
+          date: reviewDate
+        });
+        renderScript(activeScript);
+      });
+      reviewHistory?.addEventListener("click", event => {
+        const editButton = event.target.closest("[data-review-edit]");
+        const deleteButton = event.target.closest("[data-review-delete]");
+        const state = getStatusState(activeScript.number);
+        state.reviews = state.reviews || [];
+
+        if (editButton) {
+          const index = Number(editButton.dataset.reviewEdit);
+          const review = state.reviews[index];
+          if (!review) return;
+
+          reviewText.value = review.text || "";
+          reviewText.dataset.editingReviewIndex = String(index);
+          reviewAuthor.value = review.author || "Amanda";
+          reviewAvatar.classList.toggle("robson", reviewAuthor.value === "Robson");
+          reviewAvatar.textContent = personIcon(reviewAuthor.value);
+          saveReview.textContent = "Atualizar comentário";
+          reviewText.focus();
+          return;
+        }
+
+        if (deleteButton) {
+          const index = Number(deleteButton.dataset.reviewDelete);
+          const review = state.reviews[index];
+          if (!review) return;
+          if (!window.confirm("Excluir esta alteração solicitada?")) return;
+
+          state.reviews.splice(index, 1);
+          saveStatusState(activeScript.number, state);
+          sendNotificationEvent({
+            type: "status_review_deleted",
+            scriptNumber: activeScript.number,
+            scriptTitle: `Script ${activeScript.number}`,
+            scriptTheme: activeScript.tema,
+            author: review.author || "",
+            text: review.text || "",
+            from: "",
+            to: state.current,
+            date: new Date().toISOString()
+          });
+          renderScript(activeScript);
+        }
+      });
+      reviewHistory?.addEventListener("change", event => {
+        const checkbox = event.target.closest("[data-review-complete]");
+        if (!checkbox) return;
+
+        const state = getStatusState(activeScript.number);
+        state.reviews = state.reviews || [];
+        const index = Number(checkbox.dataset.reviewComplete);
+        const review = state.reviews[index];
+        if (!review) return;
+
+        review.completed = checkbox.checked;
+        review.completedBy = checkbox.checked ? "Allan" : "";
+        review.completedAt = checkbox.checked ? new Date().toISOString() : "";
+        saveStatusState(activeScript.number, state);
+        sendNotificationEvent({
+          type: checkbox.checked ? "status_review_completed" : "status_review_reopened",
+          scriptNumber: activeScript.number,
+          scriptTitle: `Script ${activeScript.number}`,
+          scriptTheme: activeScript.tema,
+          author: "Allan",
+          text: review.text || "",
           from: "",
           to: state.current,
           date: new Date().toISOString()
