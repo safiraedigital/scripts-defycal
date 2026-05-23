@@ -1939,11 +1939,35 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     function saveStatusState(number, state) {
       localStorage.setItem(statusKey(number), JSON.stringify(state));
     }
+    function notificationTypeLabel(type) {
+      return {
+        status_change: "Mudança de status",
+        comment_created: "Novo comentário",
+        comment_updated: "Comentário editado",
+        status_review_created: "Alteração solicitada",
+        status_review_updated: "Alteração editada",
+        status_review_deleted: "Alteração excluída",
+        status_review_completed: "Alteração concluída",
+        status_review_reopened: "Alteração reaberta"
+      }[type] || type;
+    }
+    function formatNotificationDate(iso) {
+      return new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "short"
+      }).format(new Date(iso));
+    }
     function sendNotificationEvent(payload) {
+      const eventDate = payload.date || new Date().toISOString();
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          ...payload,
+          date: eventDate,
+          typeLabel: notificationTypeLabel(payload.type),
+          formattedDate: formatNotificationDate(eventDate)
+        })
       }).catch(() => {});
     }
     function formatDate(iso) {
