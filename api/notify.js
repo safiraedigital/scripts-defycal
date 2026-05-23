@@ -29,6 +29,9 @@ function normalizePayload(body) {
   const eventType = body.type || "evento";
   const eventDate = body.date || now;
   const tipo = body.typeLabel || typeLabels[eventType] || eventType;
+  const isComment = eventType.startsWith("comment_");
+  const isRequestedChange = eventType.startsWith("status_review_");
+  const eventText = body.text || "";
 
   return {
     tipo,
@@ -37,7 +40,8 @@ function normalizePayload(body) {
     numeroScript: body.scriptNumber || "",
     tema: body.scriptTheme || "",
     autor: body.author || "",
-    comentario: body.text || "",
+    comentario: isComment ? eventText : "",
+    alteracaoSolicitada: isRequestedChange ? eventText : "",
     statusAnterior: body.from || "",
     statusNovo: body.to || "",
     tipoTecnico: eventType,
