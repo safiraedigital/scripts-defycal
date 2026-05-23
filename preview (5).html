@@ -622,9 +622,9 @@
       gap: 10px;
     }
     .review-note-meta {
-      color: var(--orange-800);
-      font-size: 12px;
-      font-weight: 850;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
     }
     .review-note-actions {
       display: inline-flex;
@@ -661,9 +661,35 @@
       width: fit-content;
     }
     .review-complete input {
-      width: 16px;
-      height: 16px;
-      accent-color: #8aa38a;
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #ffffff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .review-complete input::before {
+      content: "";
+      width: 8px;
+      height: 13px;
+      border-right: 2px solid #166534;
+      border-bottom: 2px solid #166534;
+      transform: rotate(45deg) scale(0);
+      transform-origin: center;
+      transition: transform .16s ease;
+    }
+    .review-complete input:checked {
+      background: #dcfce7;
+      border-color: #bbf7d0;
+      box-shadow: 0 0 0 3px rgba(187, 247, 208, .34);
+    }
+    .review-complete input:checked::before {
+      transform: rotate(45deg) scale(1);
     }
     .review-note-body {
       display: flex;
@@ -1997,7 +2023,12 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       const reviewsHtml = reviews.map((review, index) => `
         <div class="review-note ${review.completed ? "is-complete" : ""}">
           <div class="review-note-head">
-            <span class="review-note-meta">${escapeCommentHtml(review.author)} · ${formatDate(review.date)}</span>
+            <div class="review-note-body">
+              <label class="review-complete" aria-label="Marcar alteração como concluída">
+                <input type="checkbox" data-review-complete="${index}" ${review.completed ? "checked" : ""}>
+              </label>
+              <p class="review-note-text">${escapeCommentHtml(review.text)}</p>
+            </div>
             <div class="review-note-actions">
               <button class="review-note-action" type="button" data-review-edit="${index}" aria-label="Editar alteração">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20h4l11-11a2.8 2.8 0 0 0-4-4L4 16v4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -2007,12 +2038,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
               </button>
             </div>
           </div>
-          <div class="review-note-body">
-            <label class="review-complete" aria-label="Marcar alteração como concluída">
-              <input type="checkbox" data-review-complete="${index}" ${review.completed ? "checked" : ""}>
-            </label>
-            <p class="review-note-text">${escapeCommentHtml(review.text)}</p>
-          </div>
+          <span class="review-note-meta">${escapeCommentHtml(review.author)} · ${formatDate(review.date)}</span>
         </div>
       `).join("");
       return `
