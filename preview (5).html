@@ -1859,6 +1859,13 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     function saveStatusState(number, state) {
       localStorage.setItem(statusKey(number), JSON.stringify(state));
     }
+    function sendNotificationEvent(payload) {
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
     function formatDate(iso) {
       return new Intl.DateTimeFormat("pt-BR", {
         day: "2-digit",
@@ -2051,11 +2058,21 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       const reviewAvatar = scriptMount.querySelector("[data-review-avatar]");
       select?.addEventListener("change", () => {
         const state = getStatusState(activeScript.number);
+        const previousStatus = state.current;
         const nextStatus = select.value;
         state.current = nextStatus;
         state.timeline = normalizeTimelineForStatus(state.timeline || [], nextStatus);
         state.reviews = state.reviews || [];
         saveStatusState(activeScript.number, state);
+        sendNotificationEvent({
+          type: "status_change",
+          scriptNumber: activeScript.number,
+          scriptTitle: `Script ${activeScript.number}`,
+          scriptTheme: activeScript.tema,
+          from: previousStatus,
+          to: nextStatus,
+          date: new Date().toISOString()
+        });
         renderScript(activeScript);
       });
       saveReview?.addEventListener("click", () => {
@@ -2267,8 +2284,17 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
 
           const comments = getGeneralComments();
           const editingIndex = textarea.dataset.editingIndex;
+          const isEditing = editingIndex !== undefined && editingIndex !== "";
+          const notificationPayload = {
+            type: isEditing ? "comment_updated" : "comment_created",
+            scriptNumber: getActiveScriptNumberForComments(),
+            scriptTitle: `Script ${getActiveScriptNumberForComments()}`,
+            author: author?.value || "Selecionar",
+            text,
+            date: new Date().toISOString()
+          };
 
-          if (editingIndex !== undefined && editingIndex !== "") {
+          if (isEditing) {
             const index = Number(editingIndex);
             if (comments[index]) {
               comments[index].author = author?.value || comments[index].author || "Amanda";
@@ -2286,10 +2312,11 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           }
 
           saveGeneralComments(comments);
+          sendNotificationEvent(notificationPayload);
           textarea.value = "";
 
           if (status) {
-            status.textContent = editingIndex !== undefined && editingIndex !== "" ? "Comentário atualizado." : "Comentário salvo.";
+            status.textContent = isEditing ? "Comentário atualizado." : "Comentário salvo.";
             setTimeout(() => { status.textContent = ""; }, 1800);
           }
 
