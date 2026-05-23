@@ -1,0 +1,11 @@
+.DS_Store
+*.swp
+*.tmp
+*.log
+
+NutriTrackPro App IOS (Confidential)/
+Concorrentes/
+Playbooks/
+
+Captura de Tela*
+IMG_*.PNG
