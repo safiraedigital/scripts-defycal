@@ -652,20 +652,23 @@
       line-height: 1.5;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+      flex: 1 1 auto;
     }
     .review-complete {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
+      justify-content: center;
       width: fit-content;
     }
     .review-complete input {
       width: 16px;
       height: 16px;
       accent-color: var(--primary);
+    }
+    .review-note-body {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
     }
     /* ===== DETAIL GRID ===== */
     .detail-grid {
@@ -2004,11 +2007,12 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
               </button>
             </div>
           </div>
-          <p class="review-note-text">${escapeCommentHtml(review.text)}</p>
-          <label class="review-complete">
-            <input type="checkbox" data-review-complete="${index}" ${review.completed ? "checked" : ""}>
-            Concluído pelo Allan
-          </label>
+          <div class="review-note-body">
+            <label class="review-complete" aria-label="Marcar alteração como concluída">
+              <input type="checkbox" data-review-complete="${index}" ${review.completed ? "checked" : ""}>
+            </label>
+            <p class="review-note-text">${escapeCommentHtml(review.text)}</p>
+          </div>
         </div>
       `).join("");
       return `
@@ -2237,7 +2241,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         if (!review) return;
 
         review.completed = checkbox.checked;
-        review.completedBy = checkbox.checked ? "Allan" : "";
+        review.completedBy = "";
         review.completedAt = checkbox.checked ? new Date().toISOString() : "";
         saveStatusState(activeScript.number, state);
         sendNotificationEvent({
@@ -2245,7 +2249,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           scriptNumber: activeScript.number,
           scriptTitle: `Script ${activeScript.number}`,
           scriptTheme: activeScript.tema,
-          author: "Allan",
+          author: "",
           text: review.text || "",
           from: "",
           to: state.current,
