@@ -1792,7 +1792,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="m8 12 2.5 2.5L16.5 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     }
     function personIcon(name) {
-      return name === "Robson" ? "👱🏻‍♂️" : "👩🏻";
+      return name === "Robson" || name === "Allan" ? "👱🏻‍♂️" : "👩🏻";
     }
     function scriptSignalClass(number) {
       const groups = {
@@ -1969,6 +1969,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
               <select class="review-author" data-review-author aria-label="Quem está fazendo o comentário">
                 <option value="Amanda">Amanda</option>
                 <option value="Robson">Robson</option>
+                <option value="Allan">Allan</option>
               </select>
             </div>
             <textarea class="review-text" data-review-text placeholder="Descreva a alteração solicitada para o editor..."></textarea>
@@ -2069,6 +2070,8 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           scriptNumber: activeScript.number,
           scriptTitle: `Script ${activeScript.number}`,
           scriptTheme: activeScript.tema,
+          author: "",
+          text: "",
           from: previousStatus,
           to: nextStatus,
           date: new Date().toISOString()
@@ -2086,6 +2089,17 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           date: new Date().toISOString()
         });
         saveStatusState(activeScript.number, state);
+        sendNotificationEvent({
+          type: "status_review_created",
+          scriptNumber: activeScript.number,
+          scriptTitle: `Script ${activeScript.number}`,
+          scriptTheme: activeScript.tema,
+          author: reviewAuthor.value,
+          text,
+          from: "",
+          to: state.current,
+          date: new Date().toISOString()
+        });
         renderScript(activeScript);
       });
       reviewAuthor?.addEventListener("change", () => {
@@ -2289,8 +2303,11 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
             type: isEditing ? "comment_updated" : "comment_created",
             scriptNumber: getActiveScriptNumberForComments(),
             scriptTitle: `Script ${getActiveScriptNumberForComments()}`,
+            scriptTheme: activeScript?.tema || "",
             author: author?.value || "Selecionar",
             text,
+            from: "",
+            to: "",
             date: new Date().toISOString()
           };
 
