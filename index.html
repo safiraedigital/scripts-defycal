@@ -766,6 +766,19 @@
       text-wrap: balance;
       letter-spacing: 0;
     }
+    .detail-value-text {
+      display: block;
+      width: 100%;
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px !important;
+      line-height: 1.24;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-align: center;
+      font-stretch: normal;
+      transform: none;
+    }
     /* ===== HOOK ===== */
     .hook {
       margin: 14px 28px 0;
@@ -2208,7 +2221,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       `).join("") || `<div class="empty">Nenhum roteiro encontrado.</div>`;
     }
     function detail(label, value, accent = "accent-green") {
-      return `<div class="detail ${accent}"><span class="detail-badge">${label}</span><strong>${value}</strong></div>`;
+      return `<div class="detail ${accent}"><span class="detail-badge">${label}</span><strong><span class="detail-value-text">${value}</span></strong></div>`;
     }
     function renderScript(item) {
       activeScript = item;
