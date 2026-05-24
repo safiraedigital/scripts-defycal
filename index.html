@@ -1865,6 +1865,10 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     ];
     const timelineOrder = ["Escrito", "Material pendente", "Em produção", "Concluído", "Alteração solicitada", "Aprovado"];
     let activeScript = scripts[0];
+    let remoteStateReady = false;
+    let remoteStatusByScript = {};
+    let remoteCommentsByScript = {};
+    let remoteReviewsByScript = {};
     function accentFor(number, offset = 0) {
       return accentCycle[(number + offset - 1) % accentCycle.length];
     }
@@ -1914,7 +1918,93 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     function statusKey(number) {
       return `defycal-editor-status-v5-script-${number}`;
     }
+    async function stateRequest(payload) {
+      const response = await fetch("/api/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error("State request failed");
+      return response.json();
+    }
+    async function loadRemoteState() {
+      try {
+        const response = await fetch("/api/state");
+        if (!response.ok) throw new Error("State load failed");
+        const data = await response.json();
+
+        remoteStatusByScript = {};
+        remoteCommentsByScript = {};
+        remoteReviewsByScript = {};
+
+        (data.statuses || []).forEach(row => {
+          remoteStatusByScript[row.script_number] = {
+            current: row.status || "Escrito",
+            timeline: [{ status: row.status || "Escrito", date: row.updated_at || new Date().toISOString() }],
+            reviews: []
+          };
+        });
+
+        (data.comments || []).forEach(row => {
+          const key = row.script_number;
+          if (!remoteCommentsByScript[key]) remoteCommentsByScript[key] = [];
+          remoteCommentsByScript[key].push({
+            id: row.id,
+            author: row.author,
+            text: row.comment,
+            date: new Date(row.created_at).toLocaleString("pt-BR", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit"
+            })
+          });
+        });
+
+        (data.reviews || []).forEach(row => {
+          const key = row.script_number;
+          if (!remoteReviewsByScript[key]) remoteReviewsByScript[key] = [];
+          remoteReviewsByScript[key].push({
+            id: row.id,
+            author: row.author,
+            text: row.review,
+            date: row.created_at,
+            completed: Boolean(row.completed)
+          });
+        });
+
+        Object.keys(remoteReviewsByScript).forEach(scriptNumber => {
+          if (!remoteStatusByScript[scriptNumber]) {
+            remoteStatusByScript[scriptNumber] = {
+              current: "Escrito",
+              timeline: [{ status: "Escrito", date: new Date().toISOString() }],
+              reviews: []
+            };
+          }
+          remoteStatusByScript[scriptNumber].reviews = remoteReviewsByScript[scriptNumber];
+        });
+
+        remoteStateReady = true;
+      } catch (error) {
+        remoteStateReady = false;
+      }
+    }
     function getStatusState(number) {
+      if (remoteStateReady) {
+        if (!remoteStatusByScript[number]) {
+          remoteStatusByScript[number] = {
+            current: "Escrito",
+            timeline: [{ status: "Escrito", date: new Date().toISOString() }],
+            reviews: []
+          };
+        }
+        return remoteStatusByScript[number] || {
+          current: "Escrito",
+          timeline: [{ status: "Escrito", date: new Date().toISOString() }],
+          reviews: []
+        };
+      }
       const stored = localStorage.getItem(statusKey(number));
       if (stored) {
         try {
@@ -2190,7 +2280,13 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         state.currentRegistroId = registroId;
         state.timeline = normalizeTimelineForStatus(state.timeline || [], nextStatus);
         state.reviews = state.reviews || [];
+        if (remoteStateReady) remoteStatusByScript[activeScript.number] = state;
         saveStatusState(activeScript.number, state);
+        stateRequest({
+          action: "status_save",
+          scriptNumber: activeScript.number,
+          status: nextStatus
+        }).catch(() => {});
         sendNotificationEvent({
           type: "status_change",
           registroId,
@@ -2217,22 +2313,41 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         const editingIndex = reviewText.dataset.editingReviewIndex;
         const isEditing = editingIndex !== undefined && editingIndex !== "";
         const reviewDate = new Date().toISOString();
+        let reviewId = "";
 
         if (isEditing && state.reviews[Number(editingIndex)]) {
           const review = state.reviews[Number(editingIndex)];
+          reviewId = review.id || "";
           review.author = reviewAuthor.value;
           review.text = text;
           review.date = reviewDate;
           review.edited = true;
+          if (reviewId) {
+            stateRequest({
+              action: "review_update",
+              id: reviewId,
+              author: reviewAuthor.value,
+              text
+            }).catch(() => {});
+          }
           delete reviewText.dataset.editingReviewIndex;
           saveReview.textContent = "Salvar comentário";
         } else {
-          state.reviews.push({
+          const review = {
             author: reviewAuthor.value,
             text,
             date: reviewDate,
             completed: false
-          });
+          };
+          state.reviews.push(review);
+          stateRequest({
+            action: "review_create",
+            scriptNumber: activeScript.number,
+            author: reviewAuthor.value,
+            text
+          }).then(result => {
+            if (result?.data?.[0]?.id) review.id = result.data[0].id;
+          }).catch(() => {});
         }
         saveStatusState(activeScript.number, state);
         sendNotificationEvent({
@@ -2278,6 +2393,9 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
 
           state.reviews.splice(index, 1);
           saveStatusState(activeScript.number, state);
+          if (review.id) {
+            stateRequest({ action: "review_delete", id: review.id }).catch(() => {});
+          }
           sendNotificationEvent({
             type: "status_review_deleted",
             registroId: state.currentRegistroId || "",
@@ -2307,6 +2425,13 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         review.completedBy = "";
         review.completedAt = checkbox.checked ? new Date().toISOString() : "";
         saveStatusState(activeScript.number, state);
+        if (review.id) {
+          stateRequest({
+            action: "review_complete",
+            id: review.id,
+            completed: checkbox.checked
+          }).catch(() => {});
+        }
         sendNotificationEvent({
           type: checkbox.checked ? "status_review_completed" : "status_review_reopened",
           registroId: state.currentRegistroId || "",
@@ -2388,9 +2513,12 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       noteStatus.textContent = "Roteiro copiado.";
       window.setTimeout(() => noteStatus.textContent = "", 1600);
     });
-    renderNav();
-    renderScript(activeScript);
-    setTab("scripts");
+    loadRemoteState().finally(() => {
+      renderNav();
+      renderScript(activeScript);
+      setTab("scripts");
+      refreshCommentsAfterRender();
+    });
   
 
 
@@ -2406,6 +2534,11 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     }
 
     function getGeneralComments() {
+      if (remoteStateReady) {
+        const scriptNumber = getActiveScriptNumberForComments();
+        if (!remoteCommentsByScript[scriptNumber]) remoteCommentsByScript[scriptNumber] = [];
+        return remoteCommentsByScript[scriptNumber];
+      }
       try {
         return JSON.parse(localStorage.getItem(generalCommentKey()) || "[]");
       } catch (error) {
@@ -2533,18 +2666,36 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           if (isEditing) {
             const index = Number(editingIndex);
             if (comments[index]) {
+              const existingCommentId = comments[index].id || "";
               comments[index].author = author?.value || comments[index].author || "Amanda";
               comments[index].text = text;
               comments[index].date = `${formatCommentDate()} · editado`;
+              if (existingCommentId) {
+                stateRequest({
+                  action: "comment_update",
+                  id: existingCommentId,
+                  author: comments[index].author,
+                  text
+                }).catch(() => {});
+              }
             }
             delete textarea.dataset.editingIndex;
             button.textContent = "Salvar comentário";
           } else {
-            comments.push({
+            const comment = {
               author: author?.value || "Selecionar",
               text,
               date: formatCommentDate()
-            });
+            };
+            comments.push(comment);
+            stateRequest({
+              action: "comment_create",
+              scriptNumber: getActiveScriptNumberForComments(),
+              author: comment.author,
+              text
+            }).then(result => {
+              if (result?.data?.[0]?.id) comment.id = result.data[0].id;
+            }).catch(() => {});
           }
 
           saveGeneralComments(comments);
@@ -2589,8 +2740,12 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
             const index = Number(deleteButton.dataset.commentDelete);
             if (!comments[index]) return;
 
+            const removedComment = comments[index];
             comments.splice(index, 1);
             saveGeneralComments(comments);
+            if (removedComment.id) {
+              stateRequest({ action: "comment_delete", id: removedComment.id }).catch(() => {});
+            }
 
             if (textarea.dataset.editingIndex === String(index)) {
               delete textarea.dataset.editingIndex;
