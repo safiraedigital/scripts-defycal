@@ -1,5 +1,5 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 
 function supabaseHeaders(extra = {}) {
   return {
@@ -12,7 +12,7 @@ function supabaseHeaders(extra = {}) {
 
 async function supabaseFetch(path, options = {}) {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    throw new Error("Supabase environment variables are not configured");
+    throw new Error(`Supabase environment variables are not configured: SUPABASE_URL=${SUPABASE_URL ? "set" : "missing"}, SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_KEY ? "set" : "missing"}`);
   }
 
   const response = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${path}`, {
