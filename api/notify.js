@@ -38,6 +38,7 @@ function normalizePayload(body) {
     data: body.formattedDate || formatDate(eventDate),
     script: body.scriptTitle || (body.scriptNumber ? `Script ${body.scriptNumber}` : ""),
     numeroScript: body.scriptNumber || "",
+    registroId: body.registroId || "",
     tema: body.scriptTheme || "",
     autor: body.author || "",
     comentario: isComment ? eventText : "",

@@ -1957,6 +1957,10 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         timeStyle: "short"
       }).format(new Date(iso));
     }
+    function createNotificationId() {
+      if (crypto?.randomUUID) return crypto.randomUUID();
+      return `registro-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
     function sendNotificationEvent(payload) {
       const eventDate = payload.date || new Date().toISOString();
       fetch("/api/notify", {
@@ -2181,12 +2185,15 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         const state = getStatusState(activeScript.number);
         const previousStatus = state.current;
         const nextStatus = select.value;
+        const registroId = createNotificationId();
         state.current = nextStatus;
+        state.currentRegistroId = registroId;
         state.timeline = normalizeTimelineForStatus(state.timeline || [], nextStatus);
         state.reviews = state.reviews || [];
         saveStatusState(activeScript.number, state);
         sendNotificationEvent({
           type: "status_change",
+          registroId,
           scriptNumber: activeScript.number,
           scriptTitle: `Script ${activeScript.number}`,
           scriptTheme: activeScript.tema,
@@ -2230,6 +2237,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         saveStatusState(activeScript.number, state);
         sendNotificationEvent({
           type: isEditing ? "status_review_updated" : "status_review_created",
+          registroId: state.currentRegistroId || "",
           scriptNumber: activeScript.number,
           scriptTitle: `Script ${activeScript.number}`,
           scriptTheme: activeScript.tema,
@@ -2272,6 +2280,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           saveStatusState(activeScript.number, state);
           sendNotificationEvent({
             type: "status_review_deleted",
+            registroId: state.currentRegistroId || "",
             scriptNumber: activeScript.number,
             scriptTitle: `Script ${activeScript.number}`,
             scriptTheme: activeScript.tema,
@@ -2300,6 +2309,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         saveStatusState(activeScript.number, state);
         sendNotificationEvent({
           type: checkbox.checked ? "status_review_completed" : "status_review_reopened",
+          registroId: state.currentRegistroId || "",
           scriptNumber: activeScript.number,
           scriptTitle: `Script ${activeScript.number}`,
           scriptTheme: activeScript.tema,
