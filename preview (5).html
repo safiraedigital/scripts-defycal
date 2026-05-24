@@ -749,18 +749,22 @@
     .detail.accent-red .detail-badge { background: var(--red-100); color: var(--red-800); }
     .detail.accent-purple .detail-badge { background: var(--purple-100); color: var(--purple-800); }
     .detail strong {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: visible;
       text-overflow: unset;
       margin: 0 auto;
-      font-size: 13.5px;
-      line-height: 1.22;
+      width: min(100%, 280px);
+      min-height: 36px;
+      font-size: 14px;
+      line-height: 1.24;
       font-weight: 700;
       text-align: center;
-      max-width: min(100%, 280px);
       align-self: center;
       white-space: normal;
       text-wrap: balance;
+      letter-spacing: 0;
     }
     /* ===== HOOK ===== */
     .hook {
