@@ -14,8 +14,10 @@ async function supabaseFetch(path, options = {}) {
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     throw new Error(`Supabase environment variables are not configured: SUPABASE_URL=${SUPABASE_URL ? "set" : "missing"}, SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_KEY ? "set" : "missing"}`);
   }
+  const baseUrl = SUPABASE_URL.replace(/\/$/, "");
+  const restUrl = baseUrl.endsWith("/rest/v1") ? baseUrl : `${baseUrl}/rest/v1`;
 
-  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${path}`, {
+  const response = await fetch(`${restUrl}/${path}`, {
     ...options,
     headers: supabaseHeaders(options.headers)
   });
