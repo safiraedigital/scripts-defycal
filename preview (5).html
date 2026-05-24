@@ -1866,6 +1866,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
       "Aprovado"
     ];
     const timelineOrder = ["Escrito", "Material pendente", "Em produção", "Concluído", "Alteração solicitada", "Aprovado"];
+    const initialStatusDate = "2026-05-23T12:00:00-03:00";
     let activeScript = scripts[0];
     let remoteStateReady = false;
     let remoteStatusByScript = {};
@@ -1920,6 +1921,13 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     function statusKey(number) {
       return `defycal-editor-status-v5-script-${number}`;
     }
+    function defaultStatusState() {
+      return {
+        current: "Escrito",
+        timeline: [{ status: "Escrito", date: initialStatusDate }],
+        reviews: []
+      };
+    }
     async function stateRequest(payload) {
       const response = await fetch("/api/state", {
         method: "POST",
@@ -1942,7 +1950,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         (data.statuses || []).forEach(row => {
           remoteStatusByScript[row.script_number] = {
             current: row.status || "Escrito",
-            timeline: [{ status: row.status || "Escrito", date: row.updated_at || new Date().toISOString() }],
+            timeline: [{ status: row.status || "Escrito", date: row.updated_at || initialStatusDate }],
             reviews: []
           };
         });
@@ -1980,7 +1988,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           if (!remoteStatusByScript[scriptNumber]) {
             remoteStatusByScript[scriptNumber] = {
               current: "Escrito",
-              timeline: [{ status: "Escrito", date: new Date().toISOString() }],
+              timeline: [{ status: "Escrito", date: initialStatusDate }],
               reviews: []
             };
           }
@@ -1995,17 +2003,9 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
     function getStatusState(number) {
       if (remoteStateReady) {
         if (!remoteStatusByScript[number]) {
-          remoteStatusByScript[number] = {
-            current: "Escrito",
-            timeline: [{ status: "Escrito", date: new Date().toISOString() }],
-            reviews: []
-          };
+          remoteStatusByScript[number] = defaultStatusState();
         }
-        return remoteStatusByScript[number] || {
-          current: "Escrito",
-          timeline: [{ status: "Escrito", date: new Date().toISOString() }],
-          reviews: []
-        };
+        return remoteStatusByScript[number] || defaultStatusState();
       }
       const stored = localStorage.getItem(statusKey(number));
       if (stored) {
@@ -2020,11 +2020,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           localStorage.removeItem(statusKey(number));
         }
       }
-      const fallback = {
-        current: "Escrito",
-        timeline: [{ status: "Escrito", date: new Date().toISOString() }],
-        reviews: []
-      };
+      const fallback = defaultStatusState();
       saveStatusState(number, fallback);
       return fallback;
     }
