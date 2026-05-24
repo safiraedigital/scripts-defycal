@@ -1949,9 +1949,10 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
         remoteReviewsByScript = {};
 
         (data.statuses || []).forEach(row => {
+          const status = row.status || "Escrito";
           remoteStatusByScript[row.script_number] = {
-            current: row.status || "Escrito",
-            timeline: [{ status: row.status || "Escrito", date: row.updated_at || initialStatusDate }],
+            current: status,
+            timeline: [{ status, date: status === "Escrito" ? initialStatusDate : row.updated_at || initialStatusDate }],
             reviews: []
           };
         });
@@ -2257,7 +2258,7 @@ cta: "Facilita tua alimentação sem complicar tua rotina. É só clicar no link
           latestByStatus.set(entry.status, entry);
         }
       });
-      latestByStatus.set(nextStatus, { status: nextStatus, date: new Date().toISOString() });
+      latestByStatus.set(nextStatus, { status: nextStatus, date: nextStatus === "Escrito" ? initialStatusDate : new Date().toISOString() });
       return timelineOrder
         .filter(status => latestByStatus.has(status))
         .map(status => latestByStatus.get(status));
